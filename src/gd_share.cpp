@@ -2,7 +2,6 @@
 #include <Geode/modify/Modify.hpp>
 #include <Geode/modify/LevelBrowserLayer.hpp>
 #include <Geode/modify/EditLevelLayer.hpp>
-#include <Geode/utils/logger.hpp> // for spdlog
 
 using namespace geode::prelude;
 
