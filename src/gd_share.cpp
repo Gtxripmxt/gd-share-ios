@@ -7,7 +7,7 @@
 #include <Geode/utils/cocos.hpp> //include many things for no reason
 
 namespace {
-bool $(LevelBrowserLayer::init)(LevelBrowserLayer* self, GJSearchObject* search) {
+bool $(LevelBrowserLayer::init);(LevelBrowserLayer* self, GJSearchObject* search) {
     $orig(self, search);
 
     if (search->m_searchType != SearchType::MyLevels)
