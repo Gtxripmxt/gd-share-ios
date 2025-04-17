@@ -3,46 +3,60 @@
 #include <Geode/modify/EndLevelLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
+#include <Geode/modify/LevelBrowserLayer.hpp>
+#include <Geode/modify/EditLevelLayer.hpp>
+#include <Geode/binding/LevelBrowserLayer.hpp>
 #include <Geode/ui/GeodeUI.hpp>
-#include <Geode/utils/cocos.hpp> //include many things for no reason
+#include <Geode/utils/cocos.hpp>
 
-namespace {
-bool $(LevelBrowserLayer::init);(LevelBrowserLayer* self, GJSearchObject* search) {
-    $orig(self, search);
+using namespace geode::prelude;
+
+$hook(LevelBrowserLayer::init)
+bool LevelBrowserLayer::init(GJSearchObject* search) {
+    if (!LevelBrowserLayer::init(search)) return false;
 
     if (search->m_searchType != SearchType::MyLevels)
         return true;
 
     auto sprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
-    sprite->setScale(0.5);
-    auto btn = ccMenuItemSpriteExtraWithCallback<[] {
-        spdlog::info("Import");
-    }>(sprite);
+    sprite->setScale(0.5f);
+
+    auto btn = ccMenuItemSpriteExtra::create(
+        sprite,
+        this,
+        [](CCObject*) {
+            spdlog::info("Import");
+        }
+    );
 
     auto menu = CCMenu::create();
     menu->addChild(btn);
-    menu->setPosition({50, 75});
-
-    self->addChild(menu);
+    menu->setPosition({ 50.f, 75.f });
+    this->addChild(menu);
 
     return true;
 }
 
-bool $(EditLevelLayer::init)(EditLevelLayer* self, GJGameLevel* level) {
-    $orig(self, level);
+// Hook for EditLevelLayer::init
+$hook(EditLevelLayer::init)
+bool EditLevelLayer::init(GJGameLevel* level) {
+    if (!EditLevelLayer::init(level)) return false;
 
     auto sprite = CCSprite::createWithSpriteFrameName("GJ_shareBtn_001.png");
-    sprite->setScale(0.5);
-    auto btn = ccMenuItemSpriteExtraWithCallback<[](GJGameLevel* level) {
-        spdlog::info("Export {}", level->m_levelName);
-    }>(sprite, level);
+    sprite->setScale(0.5f);
+
+    auto btn = ccMenuItemSpriteExtra::create(
+        sprite,
+        this,
+        [level](CCObject*) {
+            spdlog::info("Export {}", level->m_levelName);
+        }
+    );
 
     auto menu = CCMenu::create();
     menu->addChild(btn);
-    menu->setPosition({50, 100});
-
-    self->addChild(menu);
+    menu->setPosition({ 50.f, 100.f });
+    this->addChild(menu);
 
     return true;
 }
-} // namespace
