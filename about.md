@@ -1,3 +1,3 @@
-# Template Mod
+# Gd share ios
 
-Edit about.md to change this
+GD Share for ios real(not actual gdshare just a cutdown ver of it but yea still does the same thing)
