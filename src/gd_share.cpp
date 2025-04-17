@@ -1,62 +1,84 @@
 #include <Geode/Geode.hpp>
-#include <Geode/modify/EditorPauseLayer.hpp>
-#include <Geode/modify/EndLevelLayer.hpp>
-#include <Geode/modify/PauseLayer.hpp>
-#include <Geode/modify/PlayerObject.hpp>
+#include <Geode/modify/Modify.hpp>
 #include <Geode/modify/LevelBrowserLayer.hpp>
 #include <Geode/modify/EditLevelLayer.hpp>
-#include <Geode/binding/LevelBrowserLayer.hpp>
-#include <Geode/ui/GeodeUI.hpp>
-#include <Geode/utils/cocos.hpp>
+#include <Geode/utils/logger.hpp> // for spdlog
 
 using namespace geode::prelude;
 
-$hook(LevelBrowserLayer::init)
-bool LevelBrowserLayer::init(GJSearchObject* search) {
-    if (!LevelBrowserLayer::init(search)) return false;
+// Button callback classes
+class ImportButtonHandler : public cocos2d::CCObject {
+public:
+    void onImport(CCObject*) {
+        log::info("Import pressed");
+    }
+};
 
-    if (search->m_searchType != SearchType::MyLevels)
+class ExportButtonHandler : public cocos2d::CCObject {
+public:
+    GJGameLevel* m_level;
+
+    ExportButtonHandler(GJGameLevel* level) : m_level(level) {}
+
+    void onExport(CCObject*) {
+        log::info("Export pressed for level: {}", m_level->m_levelName);
+    }
+};
+
+// Hook LevelBrowserLayer::init
+class $modify(LevelBrowserLayerHook, LevelBrowserLayer) {
+    bool init(GJSearchObject* search) {
+        if (!LevelBrowserLayer::init(search))
+            return false;
+
+        if (search->m_searchType != SearchType::MyLevels)
+            return true;
+
+        auto sprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
+        sprite->setScale(0.5f);
+
+        auto handler = new ImportButtonHandler();
+        handler->autorelease();
+
+        auto btn = CCMenuItemSpriteExtra::create(
+            sprite,
+            handler,
+            menu_selector(ImportButtonHandler::onImport)
+        );
+
+        auto menu = CCMenu::create();
+        menu->addChild(btn);
+        menu->setPosition({50.f, 75.f});
+        this->addChild(menu);
+
         return true;
+    }
+};
 
-    auto sprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
-    sprite->setScale(0.5f);
+// Hook EditLevelLayer::init
+class $modify(EditLevelLayerHook, EditLevelLayer) {
+    bool init(GJGameLevel* level) {
+        if (!EditLevelLayer::init(level))
+            return false;
 
-    auto btn = ccMenuItemSpriteExtra::create(
-        sprite,
-        this,
-        [](CCObject*) {
-            spdlog::info("Import");
-        }
-    );
+        auto sprite = CCSprite::createWithSpriteFrameName("GJ_shareBtn_001.png");
+        sprite->setScale(0.5f);
 
-    auto menu = CCMenu::create();
-    menu->addChild(btn);
-    menu->setPosition({ 50.f, 75.f });
-    this->addChild(menu);
+        auto handler = new ExportButtonHandler(level);
+        handler->autorelease();
 
-    return true;
-}
+        auto btn = CCMenuItemSpriteExtra::create(
+            sprite,
+            handler,
+            menu_selector(ExportButtonHandler::onExport)
+        );
 
-// Hook for EditLevelLayer::init
-$hook(EditLevelLayer::init)
-bool EditLevelLayer::init(GJGameLevel* level) {
-    if (!EditLevelLayer::init(level)) return false;
+        auto menu = CCMenu::create();
+        menu->addChild(btn);
+        menu->setPosition({50.f, 100.f});
+        this->addChild(menu);
 
-    auto sprite = CCSprite::createWithSpriteFrameName("GJ_shareBtn_001.png");
-    sprite->setScale(0.5f);
+        return true;
+    }
+};
 
-    auto btn = ccMenuItemSpriteExtra::create(
-        sprite,
-        this,
-        [level](CCObject*) {
-            spdlog::info("Export {}", level->m_levelName);
-        }
-    );
-
-    auto menu = CCMenu::create();
-    menu->addChild(btn);
-    menu->setPosition({ 50.f, 100.f });
-    this->addChild(menu);
-
-    return true;
-}
