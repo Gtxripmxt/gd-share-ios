@@ -1,4 +1,10 @@
-#include <auby.hpp>
+#include <Geode/Geode.hpp>
+#include <Geode/modify/EditorPauseLayer.hpp>
+#include <Geode/modify/EndLevelLayer.hpp>
+#include <Geode/modify/PauseLayer.hpp>
+#include <Geode/modify/PlayerObject.hpp>
+#include <Geode/ui/GeodeUI.hpp>
+#include <Geode/utils/cocos.hpp> //include many things for no reason
 
 namespace {
 bool $(LevelBrowserLayer::init)(LevelBrowserLayer* self, GJSearchObject* search) {
