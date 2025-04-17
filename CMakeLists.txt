@@ -12,7 +12,7 @@ project(gd-share-ios VERSION 1.0.0)
 
 # Set up the mod binary
 add_library(${PROJECT_NAME} SHARED
-    src/gd-share.cpp
+    src/gd_share.cpp
     # Add any extra C++ source files here
 )
 
