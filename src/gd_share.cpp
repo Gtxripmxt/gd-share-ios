@@ -1,83 +1,64 @@
 #include <Geode/Geode.hpp>
-#include <Geode/modify/Modify.hpp>
-#include <Geode/modify/LevelBrowserLayer.hpp>
-#include <Geode/modify/EditLevelLayer.hpp>
+#include <Geode/modify/LevelTools.hpp>
+#include <Geode/ui/TextAlertPopup.hpp>
+#include <Geode/loader/Mod.hpp>
+#include <Geode/binding/GJGameLevel.hpp>
+#include <Geode/binding/LevelEditorLayer.hpp>
+#include <fstream>
 
 using namespace geode::prelude;
 
-// Button callback classes
-class ImportButtonHandler : public cocos2d::CCObject {
-public:
-    void onImport(CCObject*) {
-        log::info("Import pressed");
+std::string getWritablePath(const std::string& filename) {
+    return CCFileUtils::sharedFileUtils()->getWritablePath() + filename;
+}
+
+void exportLevel(GJGameLevel* level) {
+    if (!level) return;
+    
+    std::string levelData = level->m_levelString;
+    std::string name = level->m_levelName;
+    std::string filename = name + ".gmd";
+
+    std::ofstream out(getWritablePath(filename));
+    if (out) {
+        out << levelData;
+        out.close();
+        FLAlertLayer::create("Exported!", "Level exported to Documents as " + filename, "OK")->show();
+    } else {
+        FLAlertLayer::create("Error", "Could not write to file!", "OK")->show();
     }
-};
+}
 
-class ExportButtonHandler : public cocos2d::CCObject {
-public:
-    GJGameLevel* m_level;
-
-    ExportButtonHandler(GJGameLevel* level) : m_level(level) {}
-
-    void onExport(CCObject*) {
-        log::info("Export pressed for level: {}", m_level->m_levelName);
+void importLevel(const std::string& filename) {
+    std::ifstream in(getWritablePath(filename));
+    if (!in) {
+        FLAlertLayer::create("Error", "Could not open file!", "OK")->show();
+        return;
     }
-};
 
-// Hook LevelBrowserLayer::init
-class $modify(LevelBrowserLayerHook, LevelBrowserLayer) {
-    bool init(GJSearchObject* search) {
-        if (!LevelBrowserLayer::init(search))
-            return false;
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    std::string levelString = buffer.str();
 
-        if (search->m_searchType != SearchType::MyLevels)
-            return true;
+    auto level = GJGameLevel::create();
+    level->m_levelString = levelString;
+    level->m_levelName = "ImportedLevel";
+    level->m_levelID = 0;
+    level->m_levelDesc = "Imported using mod";
 
-        auto sprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
-        sprite->setScale(0.5f);
+    LevelTools::addNewLevel(level);
 
-        auto handler = new ImportButtonHandler();
-        handler->autorelease();
+    FLAlertLayer::create("Imported!", "Level imported successfully!", "OK")->show();
+}
 
-        auto btn = CCMenuItemSpriteExtra::create(
-            sprite,
-            handler,
-            menu_selector(ImportButtonHandler::onImport)
-        );
+$onMod(Loaded) {
+    Mod::get()->addCustomMenuItem("Export Current Level", [] {
+        auto level = GameManager::sharedState()->getEditorLayer()->m_level;
+        exportLevel(level);
+    });
 
-        auto menu = CCMenu::create();
-        menu->addChild(btn);
-        menu->setPosition({50.f, 75.f});
-        this->addChild(menu);
-
-        return true;
-    }
-};
-
-// Hook EditLevelLayer::init
-class $modify(EditLevelLayerHook, EditLevelLayer) {
-    bool init(GJGameLevel* level) {
-        if (!EditLevelLayer::init(level))
-            return false;
-
-        auto sprite = CCSprite::createWithSpriteFrameName("GJ_shareBtn_001.png");
-        sprite->setScale(0.5f);
-
-        auto handler = new ExportButtonHandler(level);
-        handler->autorelease();
-
-        auto btn = CCMenuItemSpriteExtra::create(
-            sprite,
-            handler,
-            menu_selector(ExportButtonHandler::onExport)
-        );
-
-        auto menu = CCMenu::create();
-        menu->addChild(btn);
-        menu->setPosition({50.f, 100.f});
-        this->addChild(menu);
-
-        return true;
-    }
-};
-
+    Mod::get()->addCustomMenuItem("Import Level from file", [] {
+        // This assumes there's a file named "import.gmd" in Documents
+        importLevel("import.gmd");
+    });
+}
