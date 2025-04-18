@@ -1,6 +1,5 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/LevelTools.hpp>
-#include <Geode/ui/TextAlertPopup.hpp>
 #include <Geode/loader/Mod.hpp>
 #include <Geode/binding/GJGameLevel.hpp>
 #include <Geode/binding/LevelEditorLayer.hpp>
