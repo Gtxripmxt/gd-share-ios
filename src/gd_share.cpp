@@ -1,63 +1,61 @@
 #include <Geode/Geode.hpp>
-#include <Geode/modify/LevelTools.hpp>
+#include <Geode/modify/MenuLayer.hpp>
 #include <Geode/loader/Mod.hpp>
-#include <Geode/binding/GJGameLevel.hpp>
 #include <Geode/binding/LevelEditorLayer.hpp>
+#include <Geode/binding/PlayLayer.hpp>
+#include <Geode/binding/LevelManager.hpp>
+#include <Geode/binding/GJGameLevel.hpp>
+#include <Geode/ui/TextInput.hpp>
 #include <fstream>
 
-using namespace geode::prelude;
+using namespace geode;
 
-std::string getWritablePath(const std::string& filename) {
-    return CCFileUtils::sharedFileUtils()->getWritablePath() + filename;
-}
+class $modify(MenuLayerExportImport, MenuLayer) {
+    bool init() {
+        if (!MenuLayer::init())
+            return false;
 
-void exportLevel(GJGameLevel* level) {
-    if (!level) return;
-    
-    std::string levelData = level->m_levelString;
-    std::string name = level->m_levelName;
-    std::string filename = name + ".gmd";
+        auto exportBtn = CCMenuItemFont::create("Export Current Level", [](auto) {
+            auto level = GameManager::sharedState()->getEditorLayer()->m_level;
+            if (!level) {
+                FLAlertLayer::create("Error", "No level loaded", "OK")->show();
+                return;
+            }
 
-    std::ofstream out(getWritablePath(filename));
-    if (out) {
-        out << levelData;
-        out.close();
-        FLAlertLayer::create("Exported!", "Level exported to Documents as " + filename, "OK")->show();
-    } else {
-        FLAlertLayer::create("Error", "Could not write to file!", "OK")->show();
-    }
-}
+            std::string gmd = level->getSaveString();
+            std::string name = level->m_levelName;
 
-void importLevel(const std::string& filename) {
-    std::ifstream in(getWritablePath(filename));
-    if (!in) {
-        FLAlertLayer::create("Error", "Could not open file!", "OK")->show();
-        return;
-    }
+            std::ofstream out(FileUtils::sharedFileUtils()->getWritablePath() + name + ".gmd");
+            out << gmd;
+            out.close();
 
-    std::stringstream buffer;
-    buffer << in.rdbuf();
-    std::string levelString = buffer.str();
+            FLAlertLayer::create("Success", "Level exported to .gmd!", "Nice")->show();
+        });
+        exportBtn->setPosition({190, 120});
+        m_buttonMenu->addChild(exportBtn);
 
-    auto level = GJGameLevel::create();
-    level->m_levelString = levelString;
-    level->m_levelName = "ImportedLevel";
-    level->m_levelID = 0;
-    level->m_levelDesc = "Imported using mod";
+        auto importBtn = CCMenuItemFont::create("Import Level from File", [](auto) {
+            auto popup = TextInputPopup::create(
+                "Import GMD",
+                "Enter level name to import (e.g. testlevel.gmd)",
+                "Import",
+                [](const std::string& filename) {
+                    std::ifstream in(FileUtils::sharedFileUtils()->getWritablePath() + filename);
+                    if (!in) {
+                        FLAlertLayer::create("Error", "File not found", "OK")->show();
+                        return;
+                    }
 
-    LevelTools::addNewLevel(level);
+                    std::stringstream buffer;
+                    buffer << in.rdbuf();
 
-    FLAlertLayer::create("Imported!", "Level imported successfully!", "OK")->show();
-}
+                    auto level = GJGameLevel::create();
+                    level->setSaveString(buffer.str());
+                    level->m_levelName = "ImportedLevel";
 
-$onMod(Loaded) {
-    Mod::get()->addCustomMenuItem("Export Current Level", [] {
-        auto level = GameManager::sharedState()->getEditorLayer()->m_level;
-        exportLevel(level);
-    });
-
-    Mod::get()->addCustomMenuItem("Import Level from file", [] {
-        // This assumes there's a file named "import.gmd" in Documents
-        importLevel("import.gmd");
-    });
-}
+                    LevelManager::sharedState()->addCustomLevel(level);
+                    GameManager::sharedState()->loadEditor(level);
+                }
+            );
+            popup->show();
+        });
