@@ -1,53 +1,69 @@
 #include <Geode/Geode.hpp>
-#include <Geode/modify/MenuLayer.hpp>
+#include <Geode/modify/LevelEditorLayer.hpp>
 #include <Geode/loader/Mod.hpp>
 #include <Geode/binding/GJGameLevel.hpp>
-#include <Geode/binding/GameManager.hpp>
-#include <Geode/binding/EditorScene.hpp>
-#include <Geode/ui/TextInput.hpp>
-#include <fstream>
-#include <sstream>
+#include <Geode/binding/GJBaseGameLayer.hpp>
+#include <Geode/binding/LevelEditorLayer.hpp>
+#include <Geode/binding/CCFileUtils.hpp>
+#include <cocos2d.h>
+#include <Geode/ui/TextAlertPopup.hpp>
 
 using namespace geode;
 
-class $modify(MenuLayerExportImport, MenuLayer) {
-    bool init() {
-        if (!MenuLayer::init())
-            return false;
+std::string getDocumentsPath() {
+    return cocos2d::CCFileUtils::sharedFileUtils()->getWritablePath();
+}
 
-        auto exportBtn = CCMenuItemFont::create("Export Current Level", [](auto) {
-            auto editorLayer = GameManager::sharedState()->getEditorLayer();
-            if (!editorLayer || !editorLayer->m_level) {
-                FLAlertLayer::create("Error", "No level loaded in editor", "OK")->show();
-                return;
-            }
+void exportCurrentLevel() {
+    auto editor = LevelEditorLayer::get();
+    if (!editor) {
+        FLAlertLayer::create("Error", "No level is currently open.", "OK")->show();
+        return;
+    }
 
-            auto level = editorLayer->m_level;
-            std::string gmd = level->getSaveString();
-            std::string name = level->m_levelName;
+    GJGameLevel* level = editor->m_level;
 
-            std::ofstream out(FileUtils::sharedFileUtils()->getWritablePath() + name + ".gmd");
-            out << gmd;
-            out.close();
+    std::string path = getDocumentsPath() + level->m_levelName + ".gmd";
 
-            FLAlertLayer::create("Success", "Level exported!", "OK")->show();
-        });
-        exportBtn->setPosition({190, 120});
-        m_buttonMenu->addChild(exportBtn);
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        FLAlertLayer::create("Error", "Could not open file for writing.", "OK")->show();
+        return;
+    }
 
-        auto importBtn = CCMenuItemFont::create("Import Level from File", [](auto) {
-            auto popup = TextInputPopup::create(
-                "Import GMD",
-                "Enter filename (e.g. level.gmd)",
-                "Import",
-                [](const std::string& filename) {
-                    std::ifstream in(FileUtils::sharedFileUtils()->getWritablePath() + filename);
-                    if (!in) {
-                        FLAlertLayer::create("Error", "File not found", "OK")->show();
-                        return;
-                    }
+    file << level->getSaveString();
+    file.close();
 
-                    std::stringstream buffer;
-                    buffer << in.rdbuf();
+    FLAlertLayer::create("Exported", ("Saved to:\n" + path).c_str(), "OK")->show();
+}
 
-                    auto level = G
+void importLevelFromFile() {
+    std::string path = getDocumentsPath() + "import.gmd";
+
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        FLAlertLayer::create("Error", "Could not find import.gmd in documents directory.", "OK")->show();
+        return;
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string data = buffer.str();
+
+    GJGameLevel* level = GJGameLevel::create();
+    level->setSaveString(data);
+    level->m_levelName = "Imported Level";
+
+    auto scene = LevelEditorLayer::scene(level, false);
+    cocos2d::CCDirector::sharedDirector()->replaceScene(scene);
+}
+
+$onMod(Loaded) {
+    Mod::get()->addCustomMenuItem("Export Current Level", [] {
+        exportCurrentLevel();
+    });
+
+    Mod::get()->addCustomMenuItem("Import Level from 'import.gmd'", [] {
+        importLevelFromFile();
+    });
+}
